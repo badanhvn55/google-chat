@@ -12,6 +12,7 @@ export class CheckTokenExpiryGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest();
+        const social = request.cookies['social'];
         const accessToken = request.cookies['access_token'];
 
         if (await this.authService.isTokenExpired(accessToken)) {
@@ -22,12 +23,24 @@ export class CheckTokenExpiryGuard implements CanActivate {
             }
 
             try {
-                const newAccessToken =
-                    await this.authService.getNewAccessToken(refreshToken);
-                request.res.cookie('access_token', newAccessToken, {
-                    httpOnly: true,
-                });
-                request.cookies['access_token'] = newAccessToken;
+                switch (social) {
+                    case 'google':
+                        const newAccessToken =
+                            await this.authService.getNewAccessToken(refreshToken);
+                        request.res.cookie('access_token', newAccessToken, {
+                            httpOnly: true,
+                        });
+                        request.cookies['access_token'] = newAccessToken;
+                        break;
+                    case 'facebook':
+                        const newFbAccessToken =
+                            await this.authService.getFacebookNewAccessToken(accessToken);
+                        request.res.cookie('access_token', newFbAccessToken, {
+                            httpOnly: true,
+                        });
+                        request.cookies['access_token'] = newFbAccessToken;
+                        break;
+                }
             } catch (error) {
                 throw new UnauthorizedException('Failed to refresh token');
             }
